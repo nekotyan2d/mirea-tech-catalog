@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "name": "HP",
+    "country": "США"
+  },
+  {
+    "id": 2,
+    "name": "Dell",
+    "country": "США"
+  },
+  {
+    "id": 3,
+    "name": "Logitech",
+    "country": "Швейцария"
+  }
+]
