@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "name": "Ноутбук ProBook 450",
+    "category_id": 1,
+    "manufacturer_id": 1,
+    "price": 65000,
+    "quantity": 5
+  },
+  {
+    "id": 2,
+    "name": "Монитор UltraSharp 27",
+    "category_id": 2,
+    "manufacturer_id": 2,
+    "price": 32000,
+    "quantity": 8
+  },
+  {
+    "id": 3,
+    "name": "Клавиатура MX Keys",
+    "category_id": 3,
+    "manufacturer_id": 3,
+    "price": 9500,
+    "quantity": 15
+  }
+]
