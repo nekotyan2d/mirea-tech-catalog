@@ -21,10 +21,10 @@
 
 ## Основные сущности
 
-- товар (id, название, id категории, id производителя, цена, количество);
-- категория (id, название);
-- производитель (id, название, страна);
-- заказ (id, товар, количество, статус).
+- `Category` — категория (`id`, `name`);
+- `Manufacturer` — производитель (`id`, `name`, `country`);
+- `Product` — товар (`id`, `name`, `category`, `manufacturer`, `price`, `quantity`);
+- `Order` — заказ (`id`, `product`, `quantity`, `is_cancelled`).
 
 ## Возможности
 
@@ -36,6 +36,26 @@
 - статистика по каталогу (остатки, стоимость, средняя цена);
 - добавление новых товаров в каталог.
 
+## Классы
+
+| Класс | Атрибуты | Методы |
+|---|---|---|
+| `Category` | `id`, `name` | `__str__`, `from_data()` |
+| `Manufacturer` | `id`, `name`, `country` | `__str__`, `from_data()` |
+| `Product` | `id`, `name`, `category`, `manufacturer`, `price`, `quantity` | `is_in_stock(min_quantity)`, `reduce_quantity(q)`, `increase_quantity(q)`, `validate_price(price)` (static), `__str__` |
+| `Order` | `id`, `product`, `quantity`, `is_cancelled` | `cancel()` (возвращает товар на склад), `__str__` |
+
+Связи объектов:
+
+```
+Product ──> Category
+Product ──> Manufacturer
+Order   ──> Product
+```
+
+Заказ при создании списывает товар со склада, при отмене возвращает.
+Отмененный заказ не удаляется, у него выставляется `is_cancelled`.
+
 ## Структура проекта
 
 ```
@@ -44,17 +64,15 @@ tech_catalog/
 ├── requirements.txt
 ├── setup.cfg
 ├── main.py             — точка запуска
-├── products.py         — работа с товарами
-├── categories.py       — работа с категориями
-├── manufacturers.py    — работа с производителями
-├── orders.py           — работа с заказами
-├── storage.py          — сохранение и загрузка данных
+├── storage.py          — загрузка и сохранение (JSON <-> объекты)
 ├── utils.py            — вспомогательные функции ввода
-├── data/
-│   ├── products.json      — данные о товарах
-│   ├── categories.json    — данные о категориях
-│   ├── manufacturers.json — данные о производителях
-│   └── orders.json        — данные о заказах
+├── models/
+│   ├── __init__.py
+│   ├── category.py     — Category и функции над списком категорий
+│   ├── manufacturer.py — Manufacturer и функции над списком производителей
+│   ├── product.py      — Product и функции над списком товаров
+│   └── order.py        — Order и функции над списком заказов
+├── data/               — JSON-файлы (хранят id, а не вложенные объекты)
 └── tests/
     ├── test_products.py
     ├── test_categories.py
@@ -89,20 +107,19 @@ python main.py
 ## Запуск тестов
 
 ```
-pytest
+pytest -v
 ```
 
 ## Проверка качества кода
 
 ```
-flake8
+flake8 .
 ```
 
 ## План развития
 
 На следующих этапах планируется:
 
-- переход на объектно-ориентированную модель (классы Product, Order);
 - разработка веб-приложения на Django;
 - подключение базы данных;
 - реализация пользователей и ролей (менеджер склада, клиент);
