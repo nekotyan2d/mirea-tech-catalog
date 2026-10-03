@@ -47,3 +47,10 @@ def get_order_status(is_available: bool) -> str:
     if is_available:
         return "Товар доступен для заказа"
     return "Товар недоступен в нужном количестве"
+
+
+def find_order_by_id(orders: List[Order], order_id: int) -> Optional[Order]:
+    for order in orders:
+        if order.id == order_id:
+            return order
+    return None

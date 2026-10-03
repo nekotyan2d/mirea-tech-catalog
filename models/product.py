@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from .category import Category
 from .manufacturer import Manufacturer
@@ -94,3 +94,10 @@ def get_catalog_statistics(products: List[Product]) -> dict:
         "total_value": round(total_value, 2),
         "average_price": round(average_price, 2),
     }
+
+
+def find_product_by_id(products: List[Product], product_id: int) -> Optional[Product]:
+    for product in products:
+        if product.id == product_id:
+            return product
+    return None
