@@ -1,1 +1,4 @@
-[]
+[
+  {"id": 1, "product_id": 1, "quantity": 1, "status": "active"},
+  {"id": 2, "product_id": 3, "quantity": 2, "status": "cancelled"}
+]
