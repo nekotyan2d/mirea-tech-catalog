@@ -7,3 +7,5 @@ urlpatterns = [
     path("products/", include("products.urls")),
     path("orders/", include("orders.urls")),
 ]
+
+handler404 = "homepage.views.page_not_found"

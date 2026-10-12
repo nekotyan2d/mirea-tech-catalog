@@ -55,6 +55,12 @@ def not_found(what, back_url, back_text):
     """
     return page(f"{what} не найден", content, status=404)
 
+def page_not_found(request, exception=None):
+    content = f"""
+    <h1>Страница не найдена</h1>
+    <a class="btn" href="/">На главную</a>
+    """
+    return page(f"Страница не найдена", content, status=404)
 
 def index(request):
     content = """
