@@ -10,9 +10,10 @@
             <h2 class="card__title">Заказ №{{ order.id }}</h2>
             <p>
                 Товар:
-                <a href="{% url 'products:detail' order.product.id %}">{{ order.product.name }}</a>
+                <a href="{% url 'products:detail' order.product_id %}">{{ order.product_name }}</a>
             </p>
             <p>Количество: {{ order.quantity }} шт.</p>
+            <p>Сумма: {{ order.total|floatformat:"-2" }} руб.</p>
             <p>Статус: {% include "orders/includes/order_status.html" %}</p>
         </div>
     {% else %}

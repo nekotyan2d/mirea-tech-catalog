@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Поиск товаров
+{% endblock %}
+
+{% block content %}
+    <h1>Поиск товаров</h1>
+
+    <form method="get" class="filters">
+        <input type="text" name="q" value="{{ q }}" placeholder="Название" class="select">
+        <input type="number" name="min_price" value="{{ min_price }}" placeholder="Цена от" min="0" class="select">
+        <input type="number" name="max_price" value="{{ max_price }}" placeholder="Цена до" min="0" class="select">
+        <button class="btn btn--primary">Найти</button>
+    </form>
+
+    {% if searched %}
+        <ul class="list">
+            {% for product in products %}
+                {% include "products/includes/product_card.html" %}
+            {% empty %}
+                <li class="list__item">По заданным условиям товары не найдены.</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <a href="{% url 'products:list' %}" class="btn">← к списку товаров</a>
+{% endblock %}

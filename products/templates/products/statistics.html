@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Статистика склада
+{% endblock %}
+
+{% block content %}
+    <h1>Статистика склада</h1>
+
+    <div class="card">
+        <p>Товаров в каталоге: {{ summary.products_count }}</p>
+        <p>Единиц на складе: {{ summary.total_quantity }}</p>
+        <p>Стоимость остатков: {{ summary.total_value|floatformat:"-2" }} руб.</p>
+        {% if summary.products_count %}
+            <p>
+                Цена: от {{ summary.min_price|floatformat:"-2" }}
+                до {{ summary.max_price|floatformat:"-2" }} руб.,
+                средняя {{ summary.avg_price|floatformat:"-2" }} руб.
+            </p>
+        {% endif %}
+    </div>
+
+    <h2>По категориям</h2>
+    <ul class="list">
+        {% for category in categories %}
+            <li class="list__item">
+                {{ category.category_name }}
+                <span class="price">{{ category.products_count }} тов., {{ category.total_quantity }} шт.</span>
+            </li>
+        {% empty %}
+            <li class="list__item">Данные отсутствуют.</li>
+        {% endfor %}
+    </ul>
+    <a href="{% url 'orders:statistics' %}" class="btn">Статистика заказов</a>
+{% endblock %}

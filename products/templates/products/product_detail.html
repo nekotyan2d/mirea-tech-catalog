@@ -8,16 +8,16 @@
     {% if product %}
         <div class="card product-card">
             <h2 class="card__title">{{ product.name }}</h2>
-            <p><strong>Категория:</strong> {{ product.category.name }}</p>
+            <p><strong>Категория:</strong> {{ product.category_name }}</p>
             <p>
                 <strong>Производитель:</strong>
-                {{ product.manufacturer.name }} ({{ product.manufacturer.country }})
+                {{ product.manufacturer_name }} ({{ product.manufacturer_country }})
             </p>
-            <p><strong>Цена:</strong> {{ product.price }} руб.</p>
+            <p><strong>Цена:</strong> {{ product.price|floatformat:"-2" }} руб.</p>
             <p><strong>На складе:</strong> {{ product.quantity }} шт.</p>
             <p>
                 Наличие:
-                {% if in_stock %}
+                {% if product.in_stock %}
                     <span class="badge badge--ok">в наличии</span>
                 {% else %}
                     <span class="badge badge--bad">нет в наличии</span>

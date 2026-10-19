@@ -23,7 +23,10 @@
         <button class="btn btn--primary">Применить</button>
     </form>
 
-    <p>Всего товаров: {{ products|length }}</p>
+    <p>
+        Всего товаров: {{ products|length }}
+        · <a href="{% url 'products:search' %}">Найти товар</a>
+    </p>
 
     <ul class="list">
         {% for product in products %}

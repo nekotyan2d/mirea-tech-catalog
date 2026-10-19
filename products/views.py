@@ -1,26 +1,16 @@
 from django.shortcuts import render
 
-from homepage.views import load_data
-from models.order import is_product_available
-from models.product import (
-    filter_products_by_category,
-    find_product_by_id,
-    sort_products,
-)
+from db.queries import fetch_all, fetch_one
 
 
 def product_list(request):
-    categories, products, _ = load_data()
-
     category_id = request.GET.get("category", "")
-    if category_id.isdigit():
-        products = filter_products_by_category(products, int(category_id))
+    category = int(category_id) if category_id.isdigit() else None
     sort = "name" if request.GET.get("sort") == "name" else "price"
-    products = sort_products(products, sort)
 
     context = {
-        "categories": categories,
-        "products": products,
+        "categories": fetch_all("category_list"),
+        "products": fetch_all("product_list", (category, category, sort)),
         "category_id": category_id,
         "sort": sort,
     }
@@ -28,16 +18,45 @@ def product_list(request):
 
 
 def product_detail(request, product_id):
-    _, products, _ = load_data()
-    product = find_product_by_id(products, product_id)
-
-    context = {
-        "product": product,
-        "in_stock": product is not None and is_product_available(product, 1),
-    }
+    product = fetch_one("product_by_id", (product_id,))
     return render(
         request,
         "products/product_detail.html",
-        context,
+        {"product": product},
         status=404 if product is None else 200,
     )
+
+
+def _number(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def product_search(request):
+    query = request.GET.get("q", "").strip()
+    min_price = _number(request.GET.get("min_price"))
+    max_price = _number(request.GET.get("max_price"))
+    searched = any(key in request.GET for key in ("q", "min_price", "max_price"))
+
+    context = {
+        "searched": searched,
+        "products": (
+            fetch_all("products_search", (query, min_price, min_price, max_price, max_price))
+            if searched
+            else []
+        ),
+        "q": query,
+        "min_price": request.GET.get("min_price", ""),
+        "max_price": request.GET.get("max_price", ""),
+    }
+    return render(request, "products/product_search.html", context)
+
+
+def statistics(request):
+    context = {
+        "summary": fetch_one("stock_summary"),
+        "categories": fetch_all("category_stats"),
+    }
+    return render(request, "products/statistics.html", context)

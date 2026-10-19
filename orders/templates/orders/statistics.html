@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Статистика заказов
+{% endblock %}
+
+{% block content %}
+    <h1>Статистика заказов</h1>
+    <p>Активных заказов: {{ active_count }}</p>
+
+    <h2>Заказано по товарам</h2>
+    <ul class="list">
+        {% for item in products %}
+            <li class="list__item">
+                {{ item.product_name }}
+                <span class="price">заказов: {{ item.orders_count }}, единиц: {{ item.ordered_quantity }}</span>
+            </li>
+        {% empty %}
+            <li class="list__item">Данные отсутствуют.</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Заказано не менее {{ popular_min }} шт.</h2>
+    <ul class="list">
+        {% for item in popular %}
+            <li class="list__item">
+                {{ item.product_name }}
+                <span class="price">{{ item.ordered_quantity }} шт.</span>
+            </li>
+        {% empty %}
+            <li class="list__item">Таких товаров нет.</li>
+        {% endfor %}
+    </ul>
+    <a href="{% url 'orders:list' %}" class="btn">← к списку заказов</a>
+{% endblock %}

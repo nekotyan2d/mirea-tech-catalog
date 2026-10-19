@@ -7,10 +7,20 @@
 {% block content %}
     <h1>Заказы</h1>
 
+    <form method="get" class="filters">
+        <select name="status" class="select">
+            <option value="">Все</option>
+            <option value="active"{% if status == "active" %} selected{% endif %}>Активные</option>
+            <option value="cancelled"{% if status == "cancelled" %} selected{% endif %}>Отмененные</option>
+        </select>
+        <button class="btn btn--primary">Применить</button>
+    </form>
+    <p><a href="{% url 'orders:statistics' %}">Статистика заказов</a></p>
+
     <ul class="list">
         {% for order in orders %}
             <li class="list__item">
-                <a href="{% url 'orders:detail' order.id %}">Заказ №{{ order.id }}: {{ order.product.name }}</a>
+                <a href="{% url 'orders:detail' order.id %}">Заказ №{{ order.id }}: {{ order.product_name }}</a>
                 {% include "orders/includes/order_status.html" %}
             </li>
         {% empty %}
