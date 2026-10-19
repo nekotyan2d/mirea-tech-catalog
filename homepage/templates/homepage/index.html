@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Каталог техники
+{% endblock %}
+
+{% block content %}
+    <h1 class="hero__title">TechCat</h1>
+    <p class="hero__lead">Учет товаров на складе и заказов.</p>
+    <p>Основные разделы:</p>
+    <a href="{% url 'products:list' %}" class="btn btn--primary">Товары</a>
+    <a href="{% url 'orders:list' %}" class="btn">Заказы</a>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Страница не найдена
+{% endblock %}
+
+{% block content %}
+    <h1>Страница не найдена</h1>
+    <a class="btn" href="{% url 'homepage:index' %}">На главную</a>
+{% endblock %}

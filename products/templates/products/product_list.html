@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Каталог – товары
+{% endblock %}
+
+{% block content %}
+    <h1>Товары</h1>
+
+    <form method="get" class="filters">
+        <select name="category" class="select">
+            <option value="">Все категории</option>
+            {% for category in categories %}
+                <option value="{{ category.id }}"{% if category.id|stringformat:"s" == category_id %} selected{% endif %}>
+                    {{ category.name }}
+                </option>
+            {% endfor %}
+        </select>
+        <select name="sort" class="select">
+            <option value="price"{% if sort == "price" %} selected{% endif %}>По цене</option>
+            <option value="name"{% if sort == "name" %} selected{% endif %}>По названию</option>
+        </select>
+        <button class="btn btn--primary">Применить</button>
+    </form>
+
+    <p>Всего товаров: {{ products|length }}</p>
+
+    <ul class="list">
+        {% for product in products %}
+            {% include "products/includes/product_card.html" %}
+        {% empty %}
+            <li class="list__item">Товары не найдены.</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

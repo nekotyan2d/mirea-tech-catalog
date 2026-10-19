@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if product %}{{ product.name }}{% else %}Товар не найден{% endif %}
+{% endblock %}
+
+{% block content %}
+    {% if product %}
+        <div class="card product-card">
+            <h2 class="card__title">{{ product.name }}</h2>
+            <p><strong>Категория:</strong> {{ product.category.name }}</p>
+            <p>
+                <strong>Производитель:</strong>
+                {{ product.manufacturer.name }} ({{ product.manufacturer.country }})
+            </p>
+            <p><strong>Цена:</strong> {{ product.price }} руб.</p>
+            <p><strong>На складе:</strong> {{ product.quantity }} шт.</p>
+            <p>
+                Наличие:
+                {% if in_stock %}
+                    <span class="badge badge--ok">в наличии</span>
+                {% else %}
+                    <span class="badge badge--bad">нет в наличии</span>
+                {% endif %}
+            </p>
+        </div>
+    {% else %}
+        <h1 class="error">Товар не найден</h1>
+        <p>Товар с указанным идентификатором отсутствует.</p>
+    {% endif %}
+    <a href="{% url 'products:list' %}" class="btn">← к списку товаров</a>
+{% endblock %}
