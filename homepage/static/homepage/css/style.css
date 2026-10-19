@@ -141,3 +141,12 @@ header {
 .error {
     color: #dc2626;
 }
+
+.footer {
+    margin-top: 32px;
+    color: var(--color-text-secondary);
+}
+
+.product-card .card__title {
+    color: var(--color-primary);
+}
