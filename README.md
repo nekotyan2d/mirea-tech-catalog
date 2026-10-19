@@ -2,7 +2,7 @@
 
 Приложение для учета товаров компьютерной техники на складе
 и оформления заказов на них. Консольная версия (ПР3) дополнена
-веб-интерфейсом на Django (ПР5), страницы переведены на шаблоны Django (ПР6).
+веб-интерфейсом на Django (ПР5), страницы переведены на шаблоны Django (ПР6), данные перенесены в SQLite (ПР7).
 
 ## Назначение
 
@@ -33,16 +33,19 @@
 - Django 6.1 — веб-фреймворк;
 - Django Template Language — шаблоны страниц;
 - HTML, собственный CSS и JavaScript (`homepage/static/homepage/`), без фреймворков;
+- SQLite и стандартная библиотека `sqlite3` — хранение данных веб-версии;
 - pytest — автоматизированные тесты;
 - flake8 — проверка качества кода.
 
 ## Возможности
 
-В веб-интерфейсе (ПР5, ПР6) доступно только чтение данных:
+В веб-интерфейсе (ПР5–ПР7) доступно только чтение данных:
 
 - просмотр списка товаров, фильтрация по категории и сортировка по цене или названию;
 - просмотр карточки товара с признаком наличия на складе;
-- просмотр списка заказов и карточки заказа со статусом.
+- просмотр списка заказов (фильтр по состоянию) и карточки заказа со статусом;
+- поиск товаров по названию и диапазону цен;
+- статистика склада и заказов.
 
 В консольной версии (ПР3) реализовано:
 
@@ -83,6 +86,9 @@ Order   ──> Product
 | `/products/<int:product_id>/` | `products.views.product_detail` | карточка товара, наличие на складе                          |
 | `/orders/`                    | `orders.views.order_list`       | список заказов со статусами                                 |
 | `/orders/<int:order_id>/`     | `orders.views.order_detail`     | карточка заказа                                             |
+| `/products/search/`           | `products.views.product_search` | поиск; параметры `?q=&min_price=&max_price=`                |
+| `/products/statistics/`       | `products.views.statistics`     | сводка по складу и категориям                               |
+| `/orders/statistics/`         | `orders.views.statistics`       | заказано по товарам, популярные товары                      |
 
 Если товар или заказ с указанным идентификатором не найден,
 возвращается страница с кодом статуса 404.
@@ -118,6 +124,44 @@ HTML формируют шаблоны:
 и `{% static %}`: `css/style.css`, `js/main.js` (текущий год в подвале),
 `img/logo.svg` (логотип в навигации).
 
+## База данных (ПР7)
+
+Данные веб-версии хранятся в SQLite: `data/catalog.sqlite`. Схема создается
+из `sql/schema.sql`, данные переносятся из JSON скриптом `db/import_json.py`
+(`python -m db.import_json` пересоздает содержимое таблиц).
+
+| Таблица         | Поля                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------ |
+| `categories`    | `id` INTEGER PK, `name` TEXT                                                                           |
+| `manufacturers` | `id` INTEGER PK, `name` TEXT, `country` TEXT                                                           |
+| `products`      | `id` INTEGER PK, `name` TEXT, `category_id` FK, `manufacturer_id` FK, `price` REAL, `quantity` INTEGER |
+| `orders`        | `id` INTEGER PK, `product_id` FK, `quantity` INTEGER, `is_cancelled` INTEGER (0 — активен, 1 — отменен) |
+
+Внешние ключи: `products.category_id → categories.id`,
+`products.manufacturer_id → manufacturers.id`, `orders.product_id → products.id`.
+
+`db/database.py` создает соединение (`sqlite3.Row`, `PRAGMA foreign_keys = ON`),
+`db/queries.py` загружает именованные запросы из `sql/queries.sql`
+(`-- name: <имя>`). Значения передаются в запросы только параметрами `?`.
+
+Запросы в `sql/queries.sql`:
+
+| Запрос                 | Вид                         | Где используется              |
+| ---------------------- | --------------------------- | ----------------------------- |
+| `category_list`        | список                      | фильтр списка товаров         |
+| `product_list`         | список, JOIN, WHERE         | `/products/`                  |
+| `product_by_id`        | JOIN, WHERE                 | `/products/<id>/`             |
+| `products_search`      | WHERE (несколько условий)   | `/products/search/`           |
+| `order_list`           | список, JOIN, WHERE         | `/orders/`                    |
+| `order_by_id`          | JOIN, WHERE                 | `/orders/<id>/`               |
+| `active_orders_count`  | COUNT                       | `/orders/statistics/`         |
+| `stock_summary`        | COUNT, SUM, AVG, MIN, MAX   | `/products/statistics/`       |
+| `category_stats`       | LEFT JOIN, GROUP BY         | `/products/statistics/`       |
+| `product_orders_stats` | LEFT JOIN, GROUP BY         | `/orders/statistics/`         |
+| `popular_products`     | GROUP BY, HAVING            | `/orders/statistics/`         |
+
+Консольная версия (ПР3) по-прежнему работает с JSON через `storage.py`.
+
 ## Структура проекта
 
 ```
@@ -127,7 +171,9 @@ tech_catalog/
 ├── setup.cfg
 ├── manage.py           — команды управления Django
 ├── main.py             — консольная версия (сохранена с ПР3)
-├── storage.py          — загрузка и сохранение (JSON <-> объекты)
+├── storage.py          — загрузка и сохранение (JSON <-> объекты, консольная версия)
+├── db/                 — слой SQLite: database.py, queries.py, import_json.py
+├── sql/                — schema.sql, queries.sql
 ├── utils.py            — вспомогательные функции ввода
 ├── catalog/            — пакет настроек Django-проекта
 │   ├── settings.py
@@ -138,7 +184,7 @@ tech_catalog/
 │   ├── base.html
 │   ├── 404.html
 │   └── includes/navigation.html
-├── homepage/           — главная страница, загрузка данных
+├── homepage/           — главная страница
 │   ├── templates/homepage/index.html
 │   └── static/homepage/{css,js,img}/
 ├── products/           — страницы товаров (templates/products/)
@@ -149,12 +195,13 @@ tech_catalog/
 │   ├── manufacturer.py — Manufacturer и функции над списком производителей
 │   ├── product.py      — Product и функции над списком товаров
 │   └── order.py        — Order и функции над списком заказов
-├── data/               — JSON-файлы (хранят id, а не вложенные объекты)
+├── data/               — JSON-файлы (хранят id, а не вложенные объекты) и catalog.sqlite
 └── tests/
     ├── test_products.py
     ├── test_categories.py
     ├── test_manufacturers.py
-    └── test_orders.py
+    ├── test_orders.py
+    └── test_db.py
 ```
 
 Приложения `homepage`, `products` и `orders` содержат `views.py` и `urls.py`;
@@ -163,10 +210,10 @@ tech_catalog/
 
 ## Формат хранения данных
 
-Данные хранятся в формате JSON в каталоге `data/`.
+Исходные данные лежат в JSON-файлах каталога `data/`.
 Консольная версия загружает их при запуске и сохраняет при выходе
-(пункт меню «0. Выход»). Веб-версия читает те же файлы при каждом
-запросе через `storage.py` и ничего не изменяет.
+(пункт меню «0. Выход»). Веб-версия читает данные из SQLite
+(`data/catalog.sqlite`) и ничего не изменяет.
 
 ## Требования
 
@@ -219,12 +266,15 @@ URL, обработка 404, навигация, собственный CSS.
 
 Реализовано (ПР6): шаблоны Django (наследование, `include`, контекст,
 циклы, условия, фильтры), именованные URL с пространствами имён,
-статические CSS, JavaScript и изображение. Данные по-прежнему хранятся
-в JSON, Django ORM и формы пока не используются.
+статические CSS, JavaScript и изображение.
+
+Реализовано (ПР7): база SQLite, схема и перенос данных из JSON, 11 SQL-запросов
+(`sql/queries.sql`), страницы читают данные через `sqlite3`, поиск и статистика.
+Django ORM пока не используется.
 
 На следующих этапах планируется:
 
-- перенос сущностей в Django ORM и подключение базы данных;
+- перенос сущностей в Django ORM (модели и миграции);
 - веб-формы: создание заказов, добавление товаров;
 - реализация пользователей и ролей (менеджер склада, клиент);
 - разработка REST API;
