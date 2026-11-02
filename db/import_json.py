@@ -1,16 +1,18 @@
 import json
+import sqlite3
+from typing import Any
 
 from db.database import ROOT, create_schema, get_connection
 
 DATA = ROOT / "data"
 
 
-def load_json(name):
+def load_json(name: str) -> list[dict[str, Any]]:
     with open(DATA / name, encoding="utf-8") as file:
         return json.load(file)
 
 
-def import_all(conn):
+def import_all(conn: sqlite3.Connection) -> None:
     """Пересоздает содержимое таблиц из JSON (порядок важен из-за внешних ключей)."""
     create_schema(conn)
     for table in ("orders", "products", "manufacturers", "categories"):
@@ -43,7 +45,7 @@ def import_all(conn):
     )
 
 
-def main():
+def main() -> None:
     conn = get_connection()
     try:
         import_all(conn)

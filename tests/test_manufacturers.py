@@ -6,29 +6,29 @@ from models.manufacturer import (
 )
 
 
-def test_manufacturer_attributes_and_str():
+def test_manufacturer_attributes_and_str() -> None:
     manufacturer = Manufacturer(1, "HP", "США")
     assert (manufacturer.id, manufacturer.name, manufacturer.country) == (1, "HP", "США")
     assert "HP" in str(manufacturer)
 
 
-def test_from_data():
+def test_from_data() -> None:
     manufacturer = Manufacturer.from_data({"id": 2, "name": "Dell", "country": "США"})
     assert manufacturer.name == "Dell" and manufacturer.country == "США"
 
 
-def test_add_manufacturer():
-    manufacturers = []
+def test_add_manufacturer() -> None:
+    manufacturers: list[Manufacturer] = []
     manufacturer = add_manufacturer(manufacturers, "HP", "США")
     assert manufacturers == [manufacturer]
     assert manufacturer.name == "HP"
 
 
-def test_find_manufacturer_by_name():
-    manufacturers = []
+def test_find_manufacturer_by_name() -> None:
+    manufacturers: list[Manufacturer] = []
     add_manufacturer(manufacturers, "Dell", "США")
     assert find_manufacturer_by_name(manufacturers, "dell") is not None
 
 
-def test_get_manufacturer_name_unknown():
+def test_get_manufacturer_name_unknown() -> None:
     assert get_manufacturer_name([], 99) == "Неизвестный производитель"

@@ -1,9 +1,10 @@
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
 from db.queries import fetch_all, fetch_one
 
 
-def product_list(request):
+def product_list(request: HttpRequest) -> HttpResponse:
     category_id = request.GET.get("category", "")
     category = int(category_id) if category_id.isdigit() else None
     sort = "name" if request.GET.get("sort") == "name" else "price"
@@ -17,7 +18,7 @@ def product_list(request):
     return render(request, "products/product_list.html", context)
 
 
-def product_detail(request, product_id):
+def product_detail(request: HttpRequest, product_id: int) -> HttpResponse:
     product = fetch_one("product_by_id", (product_id,))
     return render(
         request,
@@ -27,14 +28,16 @@ def product_detail(request, product_id):
     )
 
 
-def _number(value):
+def _number(value: str | None) -> float | None:
+    if value is None:
+        return None
     try:
         return float(value)
-    except (TypeError, ValueError):
+    except ValueError:
         return None
 
 
-def product_search(request):
+def product_search(request: HttpRequest) -> HttpResponse:
     query = request.GET.get("q", "").strip()
     min_price = _number(request.GET.get("min_price"))
     max_price = _number(request.GET.get("max_price"))
@@ -54,7 +57,7 @@ def product_search(request):
     return render(request, "products/product_search.html", context)
 
 
-def statistics(request):
+def statistics(request: HttpRequest) -> HttpResponse:
     context = {
         "summary": fetch_one("stock_summary"),
         "categories": fetch_all("category_stats"),

@@ -2,7 +2,7 @@ from db.database import get_connection
 from db.import_json import import_all
 
 
-def test_import_json_to_sqlite():
+def test_import_json_to_sqlite() -> None:
     conn = get_connection(":memory:")
     import_all(conn)
     for table, count in (("categories", 3), ("manufacturers", 3), ("products", 3), ("orders", 2)):
@@ -11,7 +11,7 @@ def test_import_json_to_sqlite():
     assert row["is_cancelled"] == 1
 
 
-def test_all_queries_run():
+def test_all_queries_run() -> None:
     from db.queries import _load
 
     conn = get_connection(":memory:")

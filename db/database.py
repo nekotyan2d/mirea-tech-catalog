@@ -6,7 +6,7 @@ DB_PATH = ROOT / "data" / "catalog.sqlite"
 SCHEMA_PATH = ROOT / "sql" / "schema.sql"
 
 
-def get_connection(path=DB_PATH) -> sqlite3.Connection:
+def get_connection(path: str | Path = DB_PATH) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
