@@ -3,7 +3,9 @@
 Приложение для учета товаров компьютерной техники на складе
 и оформления заказов на них. Консольная версия (ПР3) дополнена
 веб-интерфейсом на Django (ПР5), страницы переведены на шаблоны Django (ПР6),
-данные перенесены в SQLite (ПР7), слой доступа к данным переведён на Django ORM (ПР9).
+данные перенесены в SQLite (ПР7), слой доступа к данным переведён на Django ORM (ПР9),
+настроена административная панель Django, оптимизированы запросы ORM, добавлены вычисляемые поля,
+slug-маршрутизация и контекстный процессор (ПР10).
 
 ## Назначение
 
@@ -25,13 +27,15 @@
 
 - `Category` — категория (`id`, `name`);
 - `Manufacturer` — производитель (`id`, `name`, `country`);
-- `Product` — товар (`id`, `name`, `category`, `manufacturer`, `price`, `quantity`);
-- `Order` — заказ (`id`, `product`, `quantity`, `is_cancelled`).
+- `Product` — товар (`id`, `name`, `category`, `manufacturer`, `price`, `quantity`, `is_large`, `slug`);
+- `Order` — заказ (`id`, `product`, `quantity`, `status`).
 
 ## Используемые технологии
 
 - Python 3.12+;
-- Django 6.1 — веб-фреймворк, шаблоны DTL, Django ORM и миграции;
+- Django 6.1 — веб-фреймворк, шаблоны DTL, Django ORM, миграции и Django Admin;
+- django-debug-toolbar — профилирование и инспекция SQL-запросов ORM;
+- Unidecode — транслитерация кириллических названий для генерации slug;
 - SQLite — реляционная СУБД (целевая база данных `db.sqlite3` под управлением ORM);
 - HTML, собственный CSS и JavaScript (`homepage/static/homepage/`), без сторонних фреймворков;
 - pytest — автоматизированные тесты;
@@ -39,33 +43,28 @@
 
 ## Возможности
 
-В веб-интерфейсе (ПР5–ПР9):
+В веб-интерфейсе и административной панели (ПР5–ПР10):
 
-- просмотр списка товаров, фильтрация по категории, сортировка по цене или названию и пагинация;
-- просмотр карточки товара с признаком наличия на складе (404 при отсутствии);
-- просмотр списка заказов (фильтр по состоянию), сортировка по номеру или товару и пагинация;
-- просмотр карточки заказа со статусом и расчетной суммой (404 при отсутствии);
-- поиск товаров по названию/производителю и диапазону цен;
+- полнофункциональная административная панель Django (`/admin/`) с тонкой настройкой всех моделей;
+- просмотр списка товаров, фильтрация по категории, производителю и признаку крупного остатка;
+- сортировка товаров, пагинация, редактирование остатка прямо в таблице админки (`list_editable`);
+- просмотр карточки товара по уникальному англоязычному slug (`get_absolute_url()`);
+- просмотр связанных заказов прямо в карточке товара через встроенную форму `OrderInline` (`TabularInline`);
+- список заказов с фильтрацией по статусу (`active`, `cancelled`, `completed`), сортировкой и пагинацией;
+- массовые действия в панели управления (`cancel_orders`, `restore_orders`);
+- вычисляемое на уровне БД поле `is_large` (`GeneratedField`);
+- глобальный контекстный процессор (`catalog_context`), передающий название и число товаров во все шаблоны;
+- панель Django Debug Toolbar для контроля N+1 и оптимизации запросов (`select_related`, `annotate`, `F`);
 - статистика склада и заказов через ORM-агрегации.
 
-В консольной версии (ПР3) реализовано:
-
-- просмотр и поиск товаров по названию;
-- фильтрация по категории и по диапазону цен;
-- сортировка товаров по цене или названию;
-- проверка наличия товара на складе;
-- оформление и отмена заказов с проверкой доступности;
-- статистика по каталогу (остатки, стоимость, средняя цена);
-- добавление новых товаров в каталог.
-
-## Модели Django ORM (ПР9)
+## Модели Django ORM (ПР10)
 
 | Модель | Приложение | Поля | Связи и ограничения | Методы / свойства |
 | :--- | :--- | :--- | :--- | :--- |
 | `Category` | `products` | `id` (Auto PK), `name` (CharField, unique) | `ordering = ("name",)` | `__str__` |
 | `Manufacturer` | `products` | `id` (Auto PK), `name` (CharField), `country` (CharField) | `ordering = ("name",)` | `__str__` |
-| `Product` | `products` | `id` (Auto PK), `name` (CharField), `category` (FK), `manufacturer` (FK), `price` (DecimalField), `quantity` (PositiveIntegerField) | `category` → `Category` (`on_delete=PROTECT`, `related_name="products"`), `manufacturer` → `Manufacturer` (`on_delete=PROTECT`, `related_name="products"`) | `is_in_stock(min_q)`, `reduce_quantity(q)`, `increase_quantity(q)`, `in_stock`, `category_name`, `manufacturer_name`, `manufacturer_country`, `__str__` |
-| `Order` | `orders` | `id` (Auto PK), `product` (FK), `quantity` (PositiveIntegerField), `is_cancelled` (BooleanField) | `product` → `Product` (`on_delete=PROTECT`, `related_name="orders"`) | `cancel()`, `product_name`, `total`, `__str__` |
+| `Product` | `products` | `id` (Auto PK), `name` (CharField), `category` (FK), `manufacturer` (FK), `price` (DecimalField, help_text), `quantity` (PositiveIntegerField, help_text), `is_large` (GeneratedField), `slug` (SlugField, unique) | `category` → `Category` (`PROTECT`), `manufacturer` → `Manufacturer` (`PROTECT`) | `get_absolute_url()`, `save()`, `is_in_stock(min_q)`, `reduce_quantity(q)`, `increase_quantity(q)`, `in_stock`, `__str__` |
+| `Order` | `orders` | `id` (Auto PK), `product` (FK), `quantity` (PositiveIntegerField, help_text), `status` (CharField, choices=Status.choices) | `product` → `Product` (`PROTECT`) | `OrderManager` (`active()`, `cancelled()`, `completed()`, `for_product()`), `cancel()`, `complete()`, `product_name`, `total`, `is_cancelled` (property), `__str__` |
 
 Связи моделей:
 
@@ -75,29 +74,66 @@ Product ──(ForeignKey, PROTECT)──> Manufacturer
 Order   ──(ForeignKey, PROTECT)──> Product
 ```
 
+## Настройки административной панели Django (ПР10)
+
+- **`ProductAdmin`**:
+  - `list_display`: `id`, `name`, `category`, `manufacturer`, `price`, `quantity`, `is_large`, `active_orders_count`, `site_link`;
+  - `list_display_links`: `name`;
+  - `list_editable`: `quantity`;
+  - `search_fields`: `name`, `category__name`, `manufacturer__name`;
+  - `list_filter`: `category`, `manufacturer`, `is_large`;
+  - `ordering`: `name`;
+  - `list_per_page`: 20;
+  - `readonly_fields`: `id`, `slug`, `is_large`;
+  - `inlines`: `OrderInline` (`TabularInline`, `extra=0`, `can_delete=False`);
+  - `view_on_site`: `True` + метод `site_link` с `format_html`;
+  - `list_select_related`: `category`, `manufacturer`;
+  - `get_queryset`: аннотирование `active_orders_count` через `Count(orders, filter=Q(orders__status=ACTIVE))`.
+- **`OrderAdmin`**:
+  - `list_display`: `id`, `product`, `product_price`, `quantity`, `total_price`, `status`;
+  - `list_display_links`: `id`;
+  - `search_fields`: `product__name`, `product__category__name`, `product__manufacturer__name`;
+  - `list_filter`: `status`, `product__category`;
+  - `ordering`: `-id`;
+  - `list_per_page`: 20;
+  - `readonly_fields`: `id`, `total_price`;
+  - `list_select_related`: `product`, `product__category`, `product__manufacturer`;
+  - `autocomplete_fields`: `product`;
+  - `actions`: `cancel_orders` (массовая отмена заказов), `restore_orders` (массовое восстановление заказов) с `message_user`.
+- **`CategoryAdmin`** и **`ManufacturerAdmin`**:
+  - вывод столбцов с подсчетом привязанных товаров (`products_count`) через `Count`, сортировка, поиск, постраничный вывод по 20 записей.
+
 ## Страницы веб-интерфейса
 
 | URL                           | View-функция                    | Описание                                                                           |
 | ----------------------------- | ------------------------------- | ---------------------------------------------------------------------------------- |
-| `/`                           | `homepage.views.index`          | главная страница, навигация                                                        |
+| `/`                           | `homepage.views.index`          | главная страница, навигация с глобальным счетчиком товаров                         |
 | `/products/`                  | `products.views.product_list`   | список товаров с пагинацией; параметры `?category=<id>&sort=price\|name&page=<n>`   |
-| `/products/<int:product_id>/` | `products.views.product_detail` | карточка товара, наличие на складе (`get_object_or_404`)                            |
+| `/products/<slug:slug>/`      | `products.views.product_detail` | карточка товара по уникальному slug (`get_object_or_404`), наличие на складе       |
 | `/orders/`                    | `orders.views.order_list`       | список заказов со статусами и пагинацией; параметры `?status=...&sort=...&page=...` |
-| `/orders/<int:order_id>/`     | `orders.views.order_detail`     | карточка заказа (`get_object_or_404`)                                              |
+| `/orders/<int:order_id>/`     | `orders.views.order_detail`     | карточка заказа (`get_object_or_404`) с выгрузкой через `select_related`          |
 | `/products/search/`           | `products.views.product_search` | поиск; параметры `?q=&min_price=&max_price=`                                       |
 | `/products/statistics/`       | `products.views.statistics`     | сводка по складу и категориям через ORM `aggregate` и `annotate`                   |
-| `/orders/statistics/`         | `orders.views.statistics`       | статистика заказов и популярные товары через ORM                                   |
-
-Если товар или заказ с указанным идентификатором не найден,
-возвращается страница с кодом статуса 404 (`get_object_or_404`).
+| `/orders/statistics/`         | `orders.views.statistics`       | статистика заказов (всего, активных, отмененных, завершенных) через ORM            |
+| `/admin/`                     | `admin.site.urls`               | встроенная административная панель Django                                          |
+| `/__debug__/`                 | `debug_toolbar.urls`            | панель инструментов отладки Django Debug Toolbar (в режиме DEBUG)                 |
 
 ## База данных и миграции
 
-Целевая база данных веб-версии: `db.sqlite3`.
-Схема управляется миграциями Django (`products/migrations/`, `orders/migrations/`).
-Исходная база данных SQLite сохранена в `data/catalog.sqlite`, а резервная копия — в `data/catalog_backup.sqlite`.
-Перенос данных из `data/catalog.sqlite` в базу Django ORM выполняется скриптом `db/import_sqlite_to_orm.py` в рамках атомарной транзакции (`python -m db.import_sqlite_to_orm`).
-Структуру таблиц исходной базы можно просмотреть с помощью `python -m db.inspect_source_db`.
+Целевая база данных: `db.sqlite3`.
+Схема управляется миграциями Django:
+- `products`:
+  - `0001_initial` — базовые модели `Category`, `Manufacturer`, `Product`;
+  - `0002_product_is_large_product_slug_alter_product_price_and_more` — добавление `is_large` (`GeneratedField`), `slug`, `help_text`;
+  - `0003_populate_product_slugs` — миграция данных (`RunPython`) для заполнения slug на основе Unidecode;
+  - `0004_alter_product_slug` — установка ограничения уникальности `unique=True` на `slug`.
+- `orders`:
+  - `0001_initial` — базовая модель `Order`;
+  - `0002_order_status` — добавление поля `status` со статусами `TextChoices`;
+  - `0003_migrate_order_statuses` — миграция данных (`RunPython`) для переноса старых булевых значений `is_cancelled` в `status`;
+  - `0004_remove_order_is_cancelled_alter_order_quantity` — удаление поля `is_cancelled`.
+
+Импорт начальных данных: `python -m db.import_sqlite_to_orm`.
 
 ## Структура проекта
 
@@ -109,12 +145,12 @@ tech_catalog/
 ├── manage.py           — команды управления Django
 ├── main.py             — консольная версия (сохранена с ПР3)
 ├── storage.py          — загрузка и сохранение (JSON <-> объекты, консольная версия)
-├── db/                 — слой SQLite и скрипты миграции: database.py, queries.py, import_json.py, inspect_source_db.py, import_sqlite_to_orm.py
+├── db/                 — слой SQLite и скрипты миграции: import_sqlite_to_orm.py
 ├── sql/                — schema.sql, queries.sql (ПР7)
 ├── utils.py            — вспомогательные функции ввода
 ├── catalog/            — пакет настроек Django-проекта
-│   ├── settings.py
-│   ├── urls.py         — маршруты верхнего уровня
+│   ├── settings.py     — настройки проекта (INSTALLED_APPS, MIDDLEWARE, TEMPLATES, INTERNAL_IPS)
+│   ├── urls.py         — маршруты верхнего уровня (включая admin/ и __debug__/)
 │   ├── asgi.py
 │   └── wsgi.py
 ├── templates/          — общие шаблоны
@@ -124,11 +160,28 @@ tech_catalog/
 ├── homepage/           — главная страница
 │   ├── templates/homepage/index.html
 │   └── static/homepage/{css,js,img}/
-├── products/           — каталог товаров (модели, views, urls, templates/products, migrations)
-├── orders/             — заказы (модели, views, urls, templates/orders, migrations)
+├── products/           — каталог товаров
+│   ├── admin.py        — настройки ProductAdmin, CategoryAdmin, ManufacturerAdmin, OrderInline
+│   ├── apps.py         — ProductsConfig с verbose_name
+│   ├── context_processors.py — catalog_context (site_name, products_count)
+│   ├── models.py       — Category, Manufacturer, Product (GeneratedField, SlugField, get_absolute_url)
+│   ├── tests.py        — Django TestCase для моделей и views products
+│   ├── urls.py         — маршруты каталога (slug-маршрут detail)
+│   ├── views.py        — product_list, product_detail, product_search, statistics
+│   ├── templates/products/
+│   └── migrations/
+├── orders/             — заказы
+│   ├── admin.py        — OrderAdmin (list_display, actions, filters, search, autocomplete)
+│   ├── apps.py         — OrdersConfig с verbose_name
+│   ├── models.py       — Order (Status TextChoices, OrderManager, OrderQuerySet)
+│   ├── tests.py        — Django TestCase для заказов
+│   ├── urls.py         — маршруты заказов
+│   ├── views.py        — order_list, order_detail, statistics
+│   ├── templates/orders/
+│   └── migrations/
 ├── models/             — ООП-классы предметной области консольной версии (ПР3)
 ├── data/               — JSON-файлы и catalog.sqlite (ПР7)
-└── tests/              — автоматизированные тесты pytest (32 теста)
+└── tests/              — автоматизированные тесты pytest
     ├── test_products.py
     ├── test_categories.py
     ├── test_manufacturers.py
@@ -141,13 +194,14 @@ tech_catalog/
 
 - Python 3.12+ (требование Django 6.1);
 - Django 6.1;
+- django-debug-toolbar;
+- Unidecode;
 - pytest;
 - flake8.
 
 Установка зависимостей (в виртуальном окружении):
 
 ```
-python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 ```
@@ -166,53 +220,28 @@ python manage.py migrate
 python -m db.import_sqlite_to_orm
 ```
 
+Создание суперпользователя (для доступа к `/admin/`):
+
+```
+python manage.py createsuperuser
+```
+
 Веб-версия (Django):
 
 ```
 python manage.py runserver
 ```
 
-После запуска открыть в браузере <http://127.0.0.1:8000/>
+После запуска открыть в браузере:
+- Основной сайт: <http://127.0.0.1:8000/>
+- Административная панель: <http://127.0.0.1:8000/admin/>
 
-Консольная версия (сохранена):
-
-```
-python main.py
-```
-
-## Запуск тестов
+## Запуск тестов и проверок
 
 ```
+python manage.py check
+python manage.py makemigrations --check
+python manage.py test
 pytest -v
-```
-
-## Проверка качества кода
-
-```
 flake8 .
 ```
-
-## Текущее состояние и план развития
-
-Реализовано (ПР5): Django-проект и три приложения, двухуровневая
-маршрутизация, view-функции и страницы на данных ПР3, динамические
-URL, обработка 404, навигация, собственный CSS.
-
-Реализовано (ПР6): шаблоны Django (наследование, `include`, контекст,
-циклы, условия, фильтры), именованные URL с пространствами имён,
-статические CSS, JavaScript и изображение.
-
-Реализовано (ПР7): база SQLite, схема и перенос данных из JSON, 11 SQL-запросов
-(`sql/queries.sql`), страницы читают данные через `sqlite3`, поиск и статистика.
-
-Реализовано (ПР9): модели Django ORM (`Category`, `Manufacturer`, `Product`, `Order`),
-связи `ForeignKey` с `PROTECT`, миграции, перенос данных через `db.import_sqlite_to_orm`,
-переход представлений на ORM (фильтрация, поиск, сортировка, агрегация, аннотирование,
-постраничный вывод с сохранением GET-параметров через `{% querystring %}`), тесты в `tests/test_orm.py`.
-
-На следующих этапах планируется:
-
-- веб-формы: создание заказов, добавление товаров;
-- реализация пользователей и ролей (менеджер склада, клиент);
-- разработка REST API;
-- контейнеризация приложения и настройка CI/CD.
