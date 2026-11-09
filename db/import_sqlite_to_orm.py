@@ -84,17 +84,23 @@ def import_data() -> None:
 
         ord_count = 0
         for row in orders:
+            status = (
+                Order.Status.CANCELLED
+                if row["is_cancelled"]
+                else Order.Status.ACTIVE
+            )
             Order.objects.update_or_create(
                 pk=row["id"],
                 defaults={
                     "product_id": row["product_id"],
                     "quantity": row["quantity"],
-                    "is_cancelled": bool(row["is_cancelled"]),
+                    "status": status,
                 },
             )
             ord_count += 1
 
     print("Перенос данных из SQLite в Django ORM успешно завершён:")
+
     print(f"  Категорий перенесено: {cat_count}")
     print(f"  Производителей перенесено: {man_count}")
     print(f"  Товаров перенесено: {prod_count}")
