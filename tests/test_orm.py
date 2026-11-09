@@ -122,3 +122,95 @@ def test_views_orders() -> None:
     resp_stats = client.get("/orders/statistics/")
     assert resp_stats.status_code == 200
     assert "Статистика заказов" in resp_stats.content.decode("utf-8")
+
+
+def test_order_status_and_custom_manager() -> None:
+    product = Product.objects.get(name="Монитор UltraSharp 27")
+    order = Order.objects.create(
+        product=product,
+        quantity=1,
+        status=Order.Status.ACTIVE,
+    )
+    assert order.status == Order.Status.ACTIVE
+    assert not order.is_cancelled
+    assert Order.objects.active().filter(pk=order.pk).exists()
+
+    order.complete()
+    assert order.status == Order.Status.COMPLETED
+    assert Order.objects.completed().filter(pk=order.pk).exists()
+    assert not Order.objects.active().filter(pk=order.pk).exists()
+
+    order.status = Order.Status.ACTIVE
+    order.save()
+    order.cancel()
+    assert order.status == Order.Status.CANCELLED
+    assert order.is_cancelled
+    assert Order.objects.cancelled().filter(pk=order.pk).exists()
+
+    order.delete()
+
+
+def test_product_slug_and_get_absolute_url() -> None:
+    client = Client()
+    product = Product.objects.get(name="Ноутбук ProBook 450")
+    assert product.slug
+    assert "noutbuk-probook-450" in product.slug
+
+    url = product.get_absolute_url()
+    assert url == f"/products/{product.slug}/"
+
+    resp = client.get(url)
+    assert resp.status_code == 200
+    assert "Ноутбук ProBook 450" in resp.content.decode("utf-8")
+
+
+def test_product_generated_field_is_large() -> None:
+    product = Product.objects.get(name="Клавиатура MX Keys")
+    assert product.quantity >= 10
+    product.refresh_from_db()
+    assert product.is_large is True
+
+    small_product = Product.objects.get(name="Ноутбук ProBook 450")
+    assert small_product.quantity < 10
+    small_product.refresh_from_db()
+    assert small_product.is_large is False
+
+    orig_qty = small_product.quantity
+    small_product.quantity = 25
+
+    small_product.save()
+    small_product.refresh_from_db()
+    assert small_product.is_large is True
+
+    small_product.quantity = orig_qty
+    small_product.save()
+    small_product.refresh_from_db()
+    assert small_product.is_large is False
+
+
+def test_context_processor() -> None:
+    client = Client()
+    resp = client.get("/products/")
+    assert resp.status_code == 200
+    assert resp.context["site_name"] == "Tech Catalog"
+    assert resp.context["products_count"] == Product.objects.count()
+
+
+def test_admin_models_registered_and_configured() -> None:
+    from django.contrib import admin
+    assert Category in admin.site._registry
+    assert Manufacturer in admin.site._registry
+    assert Product in admin.site._registry
+    assert Order in admin.site._registry
+
+    product_admin = admin.site._registry[Product]
+    assert "name" in product_admin.search_fields
+    assert "category" in product_admin.list_filter
+    assert "quantity" in product_admin.list_editable
+    assert "id" in product_admin.readonly_fields
+
+    order_admin = admin.site._registry[Order]
+    assert "product__name" in order_admin.search_fields
+    assert "status" in order_admin.list_filter
+    assert "cancel_orders" in order_admin.actions
+    assert "restore_orders" in order_admin.actions
