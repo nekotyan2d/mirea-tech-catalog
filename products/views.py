@@ -3,8 +3,9 @@ from decimal import Decimal
 from django.core.paginator import Paginator
 from django.db.models import Avg, Count, DecimalField, F, Max, Min, Q, Sum
 from django.db.models.functions import Coalesce
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
+
 
 from .models import Category, Product
 
@@ -45,11 +46,20 @@ def product_list(request: HttpRequest) -> HttpResponse:
     return render(request, "products/product_list.html", context)
 
 
-def product_detail(request: HttpRequest, product_id: int) -> HttpResponse:
-    product = get_object_or_404(
-        Product.objects.select_related("category", "manufacturer"),
-        pk=product_id,
-    )
+def product_detail(request: HttpRequest, slug: str) -> HttpResponse:
+    if str(slug).isdigit():
+        product = (
+            Product.objects.filter(Q(slug=slug) | Q(pk=int(slug)))
+            .select_related("category", "manufacturer")
+            .first()
+        )
+        if product is None:
+            raise Http404("Товар не найден")
+    else:
+        product = get_object_or_404(
+            Product.objects.select_related("category", "manufacturer"),
+            slug=slug,
+        )
     return render(
         request,
         "products/product_detail.html",
@@ -58,6 +68,7 @@ def product_detail(request: HttpRequest, product_id: int) -> HttpResponse:
 
 
 def _number(value: object) -> float | None:
+
     if value is None:
         return None
     try:

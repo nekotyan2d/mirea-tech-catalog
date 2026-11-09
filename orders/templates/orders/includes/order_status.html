@@ -1,5 +1,7 @@
-{% if order.is_cancelled %}
+{% if order.status == "cancelled" %}
     <span class="badge badge--muted">отменен</span>
+{% elif order.status == "completed" %}
+    <span class="badge badge--ok" style="background-color: #2563eb;">завершен</span>
 {% else %}
     <span class="badge badge--ok">активен</span>
 {% endif %}

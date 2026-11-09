@@ -12,7 +12,9 @@
             <option value="">Все</option>
             <option value="active"{% if status == "active" %} selected{% endif %}>Активные</option>
             <option value="cancelled"{% if status == "cancelled" %} selected{% endif %}>Отмененные</option>
+            <option value="completed"{% if status == "completed" %} selected{% endif %}>Завершенные</option>
         </select>
+
         <select name="sort" class="select">
             <option value="id"{% if sort == "id" %} selected{% endif %}>По номеру</option>
             <option value="product"{% if sort == "product" %} selected{% endif %}>По товару</option>

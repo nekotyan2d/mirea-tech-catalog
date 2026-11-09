@@ -3,7 +3,8 @@
     <a class="nav__link logo" href="{% url 'homepage:index' %}">
         <img src="{% static 'homepage/img/logo.svg' %}" alt="TechCat" width="50" height="50">
     </a>
-    <a class="nav__link" href="{% url 'products:list' %}">Товары</a>
+    <a class="nav__link" href="{% url 'products:list' %}">Товары ({{ products_count }})</a>
     <a class="nav__link" href="{% url 'orders:list' %}">Заказы</a>
     <a class="nav__link" href="{% url 'products:statistics' %}">Статистика</a>
 </nav>
+

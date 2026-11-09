@@ -18,9 +18,11 @@ def order_list(request: HttpRequest) -> HttpResponse:
     orders = Order.objects.select_related("product")
 
     if status == "active":
-        orders = orders.exclude(is_cancelled=True)
+        orders = orders.active()
     elif status == "cancelled":
-        orders = orders.filter(is_cancelled=True)
+        orders = orders.cancelled()
+    elif status == "completed":
+        orders = orders.completed()
 
     sort_fields = {
         "id": "id",
@@ -58,14 +60,26 @@ def order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
 
 
 def statistics(request: HttpRequest) -> HttpResponse:
-    active_count = Order.objects.filter(is_cancelled=False).count()
+    stats = Order.objects.aggregate(
+        total_orders=Count("id"),
+        active_orders=Count("id", filter=Q(status=Order.Status.ACTIVE)),
+        cancelled_orders=Count("id", filter=Q(status=Order.Status.CANCELLED)),
+        completed_orders=Count("id", filter=Q(status=Order.Status.COMPLETED)),
+    )
+    active_count = stats["active_orders"]
 
     products = (
         Product.objects.annotate(
             product_name=F("name"),
-            orders_count=Count("orders", filter=Q(orders__is_cancelled=False)),
+            orders_count=Count(
+                "orders",
+                filter=Q(orders__status=Order.Status.ACTIVE),
+            ),
             ordered_quantity=Coalesce(
-                Sum("orders__quantity", filter=Q(orders__is_cancelled=False)),
+                Sum(
+                    "orders__quantity",
+                    filter=Q(orders__status=Order.Status.ACTIVE),
+                ),
                 0,
             ),
         )
@@ -73,7 +87,7 @@ def statistics(request: HttpRequest) -> HttpResponse:
     )
 
     popular = (
-        Product.objects.filter(orders__is_cancelled=False)
+        Product.objects.filter(orders__status=Order.Status.ACTIVE)
         .annotate(
             product_name=F("name"),
             ordered_quantity=Sum("orders__quantity"),
@@ -83,6 +97,7 @@ def statistics(request: HttpRequest) -> HttpResponse:
     )
 
     context = {
+        "stats": stats,
         "active_count": active_count,
         "products": products,
         "popular": popular,

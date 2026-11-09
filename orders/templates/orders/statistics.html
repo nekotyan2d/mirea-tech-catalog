@@ -6,7 +6,8 @@
 
 {% block content %}
     <h1>Статистика заказов</h1>
-    <p>Активных заказов: {{ active_count }}</p>
+    <p>Всего заказов: {{ stats.total_orders }} · Активных: {{ active_count }} · Отмененных: {{ stats.cancelled_orders }} · Завершенных: {{ stats.completed_orders }}</p>
+
 
     <h2>Заказано по товарам</h2>
     <ul class="list">
