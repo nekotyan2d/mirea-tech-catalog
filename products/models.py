@@ -2,9 +2,14 @@
 # pyright: reportReturnType=false, reportOperatorIssue=false
 from decimal import Decimal
 from django.db import models
+from django.db.models import Case, Value, When
+from django.urls import reverse
+from django.utils.text import slugify
+from unidecode import unidecode
 
 
 class Category(models.Model):
+
     name = models.CharField(
         max_length=200,
         unique=True,
@@ -60,16 +65,51 @@ class Product(models.Model):
         max_digits=10,
         decimal_places=2,
         verbose_name="Цена",
+        help_text="Укажите цену товара в рублях.",
     )
     quantity = models.PositiveIntegerField(
         default=0,
         verbose_name="Количество на складе",
+        help_text="Укажите количество товара на складе.",
     )
+    is_large = models.GeneratedField(
+        expression=Case(
+            When(quantity__gte=10, then=Value(True)),
+            default=Value(False),
+            output_field=models.BooleanField(),
+        ),
+        output_field=models.BooleanField(),
+        db_persist=True,
+        verbose_name="Крупный остаток",
+    )
+    slug = models.SlugField(
+        max_length=220,
+        unique=True,
+        editable=False,
+        verbose_name="URL-идентификатор",
+    )
+
+    def save(self, *args, **kwargs) -> None:
+        if not self.slug:
+            transliterated_name = unidecode(self.name)
+            base_slug = slugify(transliterated_name) or "product"
+            if self.pk:
+                self.slug = f"{base_slug}-{self.pk}"
+            else:
+                super().save(*args, **kwargs)
+                self.slug = f"{base_slug}-{self.pk}"
+                super().save(update_fields=["slug"])
+                return
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self) -> str:
+        return reverse("products:detail", kwargs={"slug": self.slug})
 
     def is_in_stock(self, min_quantity: int = 1) -> bool:
         return self.quantity >= min_quantity
 
     def reduce_quantity(self, quantity: int) -> None:
+
         if quantity > self.quantity:
             raise ValueError("Недостаточно товара на складе")
         self.quantity -= quantity
